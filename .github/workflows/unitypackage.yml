@@ -34,7 +34,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Enumerate Assets
         run: |
-          Get-ChildItem -Recurse -Filter '*.meta' | ForEach-Object {$_.FullName} > metaList
+          Get-ChildItem -Recurse -Filter '*.meta' -Name | ForEach-Object {$_ -replace '[\\]', '/'} >> metaList
         working-directory: ./cs/unity
       - uses: pCYSl5EDgo/create-unitypackage@master
         with:
