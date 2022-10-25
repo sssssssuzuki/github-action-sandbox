@@ -1,0 +1,61 @@
+on:
+  push:
+    tags:
+    - 'unity'
+
+name: release
+
+jobs:
+  release:
+    name: Create Github Release
+    runs-on: ubuntu-latest
+    steps:
+    - name: Create Release
+      id: create_release
+      uses: ncipollo/release-action@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        draft: false
+        prerelease: false
+    - name: Output Release URL File
+      run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt
+    - name: Save Release URL File for publish
+      uses: actions/upload-artifact@v1
+      with:
+        name: release_url
+        path: release_url.txt
+
+  publish_win:
+    needs: [release]
+    name: Upload Release Asset Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Enumerate Assets
+        run: |
+          Get-ChildItem -Recurse -Filter '*.meta' -Name >> metaList
+        working-directory: ./cs/unity
+      - uses: pCYSl5EDgo/create-unitypackage@master
+        with:
+          package-path: 'test.unitypackage'
+          include-files: ./cs/unity/metaList
+          project-folder: ./cs/unity
+      - name: Load Release URL File from release job
+        uses: actions/download-artifact@v1
+        with:
+          name: release_url
+      - name: Get Release File Name & Upload URL
+        id: get_release_info
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: ./release_url/release_url.txt
+      - name: Upload Release Asset
+        id: upload-release-asset-unity
+        uses: shogo82148/actions-upload-release-asset@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          upload_url: ${{ steps.get_release_info.outputs.content }}
+          asset_path: ./test.unitypackage
+          asset_name: test.unitypackage
+          asset_content_type: application/octet-stream
